@@ -4,6 +4,7 @@
 #include "utils.h"
 #include "config.h"
 #include "timer.h"
+#include "FixedTimeTimer.h"
 #include <ArduinoJson.h>
 #include <functional>
 #include <vector>
@@ -34,11 +35,13 @@ typedef struct {
 
 typedef struct {
   float currentTemp;
+  float rtlTemp;
   float pHLevel;
   float ORP_CL_BR;
   bool isPumpActivated;
   std::vector<TableObject> timetable;
   bool isManual;
+  unsigned long lastTableUpdate;
 } State;
 
 class App{
@@ -48,7 +51,7 @@ class App{
         DallasTemperature *sensors;
         State state;
         Timer *pumpUpdateTimer;
-        Timer *timeTableUpdate;
+        FixedTimeTimer *timeTableUpdate;
         DynamicJsonDocument * doc;
         TemperatureObject currentTemperatureSlot;
         SeasonObject currentSeasonSlot;
@@ -57,6 +60,7 @@ class App{
         bool initialized = false;
         Timer *watchDogTimer;
         Timer *manualActivationTimer;
+        Timer *temperatureTimer;
         
 
         void readTemperatureAndSeasonsTable(JsonObject &root){
@@ -180,15 +184,18 @@ class App{
             this->pumpUpdateTimer =new Timer(Timer::getIntervalFromUnit(1, UNIT_MIN), LOOP_UNTIL_STOP);
             this->pumpUpdateTimer->start();
             
-            this->timeTableUpdate = new Timer(Timer::getIntervalFromUnit(1, UNIT_H), LOOP_UNTIL_STOP);
+            this->timeTableUpdate = new FixedTimeTimer( 0 , LOOP_UNTIL_STOP);
             this->timeTableUpdate->start();
+
+            this->temperatureTimer = new Timer(Timer::getIntervalFromUnit(5, UNIT_MIN), LOOP_UNTIL_STOP);
+            this->temperatureTimer->start();
 
             //initialize Manual timmers
             this->manualActivationTimer = new Timer(Timer::getIntervalFromUnit(10, UNIT_D), SINGLE_SHOT);
             this->watchDogTimer = new Timer(Timer::getIntervalFromUnit(10, UNIT_D), SINGLE_SHOT);
 
 
-            
+            this->getTemp();
             this->initialized = true;
         };
 
@@ -329,10 +336,10 @@ class App{
             {
                 Serial.print("Temperature for the device 1 (index 0) is: ");
                 Serial.println(tempC);
-                this->state.currentTemp = tempC;
+                this->state.rtlTemp = tempC;
 
                 Serial.print("Set ");
-                Serial.println(this->state.currentTemp);
+                Serial.println(this->state.rtlTemp);
             } 
             else
             {
@@ -342,7 +349,10 @@ class App{
 
         void onTimeTableUpdateFired(){
             Serial.println("Updating timetable...");
-            this->getTemp();
+            // Get temp from rtlTemp
+            this->state.lastTableUpdate = time(NULL);
+            this->state.currentTemp = this->state.rtlTemp;
+            
             if (!getCurrentTemperatureSlot()){
               Serial.println("Could not find temperature slot");
               return;
@@ -501,6 +511,9 @@ class App{
               if (timeTableUpdate->update(time_sec))
                 onTimeTableUpdateFired();  
             }
+
+            if (this->temperatureTimer->update(time_sec))
+                this->getTemp();
               
             
         }

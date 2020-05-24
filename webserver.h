@@ -631,7 +631,9 @@ class Webserver : public ESP8266WebServer {
     jsonbuffer["isManual"] = state->isManual;
     jsonbuffer["remainingManualTime"] = state->isManual? this->app->getRemainingManualTime() : 0;
     jsonbuffer["currentTimestamp"] = time(NULL);
+    jsonbuffer["lastTableUpdate"] = state->lastTableUpdate;
     jsonbuffer["temperature"] = state->currentTemp;
+    jsonbuffer["rtlTemperature"] = state->rtlTemp;
     jsonbuffer["isPumpActivated"] = state->isPumpActivated;
     jsonbuffer["phLevel"] = state->pHLevel;
     jsonbuffer["OrpClBrLevel"] = state->ORP_CL_BR;
@@ -658,7 +660,7 @@ class Webserver : public ESP8266WebServer {
       monthsArray.add(i);
     }
         
-    jsonbuffer["name"] = this->app->getSeason()->name;
+    seasonObject["name"] = this->app->getSeason()->name;
 
     serializeJson(jsonbuffer, jsonMessage);
     replyOKWithJson( jsonMessage);
