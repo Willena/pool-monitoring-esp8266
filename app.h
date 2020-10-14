@@ -1,3 +1,4 @@
+
 #ifndef TIMETABLE_MGT
 #define TIMETABLE_MGT
 
@@ -12,6 +13,7 @@
 #include <time.h>   
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <PoolReader.h>
 
 
 typedef struct {
@@ -37,18 +39,25 @@ typedef struct {
   float currentTemp;
   float rtlTemp;
   float pHLevel;
+  uint16_t pHRaw;
   float ORP_CL_BR;
+  uint16_t ORPRaw;
+  float ambiantTemp;
+  float waterLevel;
   bool isPumpActivated;
   std::vector<TableObject> timetable;
   bool isManual;
   unsigned long lastTableUpdate;
 } State;
 
+
+
 class App{
 
     private:
         OneWire *oneWire;
         DallasTemperature *sensors;
+        PoolReader *poolReader;
         State state;
         Timer *pumpUpdateTimer;
         FixedTimeTimer *timeTableUpdate;
@@ -61,7 +70,25 @@ class App{
         Timer *watchDogTimer;
         Timer *manualActivationTimer;
         Timer *temperatureTimer;
-        
+        Timer *waterMeasurmentTimer;
+
+
+        void readCalibrationData(JsonObject &root){
+          //No Error Checking done ! Values must be present. 
+          JsonObject calData = root["calibration"];
+
+          float bufferValue = calData["buffer"];
+          uint16_t adcValue = calData["adcValue"];
+          float temp = calData["temperature"];
+
+          Serial.println("Setting calibration data: ");
+          Serial.println(" - Temperature: " + String(temp) );
+          Serial.println(" - Buffer solution value: " + String(bufferValue));
+          Serial.println(" - ADC value: "+ String(adcValue));
+          
+          poolReader->setCalibrationValue(temp, bufferValue, adcValue);
+           
+        }
 
         void readTemperatureAndSeasonsTable(JsonObject &root){
             Serial.println("Reading Temperatures from Json");
@@ -179,6 +206,11 @@ class App{
             this->oneWire = new OneWire(GPIO_DS18B20);
             this->sensors = new DallasTemperature(oneWire);
             this->sensors->begin();
+
+            this->poolReader = new PoolReader(oneWire);
+            // Applying calibration from config to the PoolReader client
+            this->readCalibrationData(root);
+            
             
             //Start timers
             this->pumpUpdateTimer =new Timer(Timer::getIntervalFromUnit(1, UNIT_MIN), LOOP_UNTIL_STOP);
@@ -190,12 +222,17 @@ class App{
             this->temperatureTimer = new Timer(Timer::getIntervalFromUnit(5, UNIT_MIN), LOOP_UNTIL_STOP);
             this->temperatureTimer->start();
 
+            this->waterMeasurmentTimer = new Timer(Timer::getIntervalFromUnit(5, UNIT_MIN), LOOP_UNTIL_STOP);
+            this->waterMeasurmentTimer->start();
+
             //initialize Manual timmers
             this->manualActivationTimer = new Timer(Timer::getIntervalFromUnit(10, UNIT_D), SINGLE_SHOT);
             this->watchDogTimer = new Timer(Timer::getIntervalFromUnit(10, UNIT_D), SINGLE_SHOT);
 
 
             this->getTemp();
+            this->getWaterMesurements();
+            
             this->initialized = true;
         };
 
@@ -324,6 +361,29 @@ class App{
             }
 
         };
+
+        void getWaterMesurements(){
+          Serial.println("Reading ORP, PH, WaterLevel, Ambiant Temperature");
+          if (!poolReader->read())
+          {
+            Serial.println("Error while reading 1-Wire sensor");
+            return;
+          }
+        
+          Serial.println("Got Temp: " + String(poolReader->getTemperature()) );
+          Serial.println("Got Ph  : " + String(poolReader->getPh()));
+          Serial.println("Got WL  : " + String(poolReader->getWaterLevel()));
+          Serial.println("Got ORP : " + String(poolReader->getOrp()));
+          Serial.println("Got Interval : " + String(poolReader->getSampleInterval()));
+
+          this->state.pHLevel = poolReader->getPh();
+          this->state.pHRaw = poolReader->getPhRaw();
+          this->state.ORP_CL_BR = poolReader->getOrp();
+          this->state.ORPRaw = poolReader->getOrpRaw();
+          this->state.ambiantTemp = poolReader->getTemperature();
+          this->state.waterLevel = poolReader->getWaterLevel();
+
+        }
 
         void getTemp(){
             Serial.print("Requesting temperatures...");
@@ -504,7 +564,7 @@ class App{
                 disableManualPump();
               }
               
-            }else{
+            } else {
               if (pumpUpdateTimer->update(time_sec))
                 onCheckPumpForUpdate();
             
@@ -514,9 +574,11 @@ class App{
 
             if (this->temperatureTimer->update(time_sec))
                 this->getTemp();
-              
+
+            if (this->waterMeasurmentTimer->update(time_sec))
+                this->getWaterMesurements();
             
-        }
+    }
 
 };
 

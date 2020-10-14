@@ -502,8 +502,12 @@ class Webserver : public ESP8266WebServer {
       client.put("pool_pump_status", String(this->app->getStatus()->isPumpActivated?1:0));
       client.put("pool_is_manual", String(this->app->getStatus()->isManual?1:0));
       client.put("pool_ph_level", String(this->app->getStatus()->pHLevel));
+      client.put("pool_ph_raw", String(this->app->getStatus()->pHRaw));
       client.put("pool_OrpClBr_level", String(this->app->getStatus()->ORP_CL_BR));
+      client.put("pool_OrpClBr_raw", String(this->app->getStatus()->ORPRaw));
       client.put("pool_manual_remaining_time", String(this->app->getRemainingManualTime()));
+      client.put("pool_ambiant_temperature", String(this->app->getStatus()->ambiantTemp));
+      client.put("pool_water_level", String(this->app->getStatus()->waterLevel));
 
       //Add more metrics in the future
 
@@ -636,7 +640,11 @@ class Webserver : public ESP8266WebServer {
     jsonbuffer["rtlTemperature"] = state->rtlTemp;
     jsonbuffer["isPumpActivated"] = state->isPumpActivated;
     jsonbuffer["phLevel"] = state->pHLevel;
+    jsonbuffer["phRaw"] = state->pHRaw;
+    jsonbuffer["orpRaw"] = state->ORPRaw;
     jsonbuffer["OrpClBrLevel"] = state->ORP_CL_BR;
+    jsonbuffer["ambiantTemperature"] = state->ambiantTemp;
+    jsonbuffer["waterLevel"] = state->waterLevel;
     jsonbuffer["version"] = POOL_FW_VERSION;
     jsonbuffer["uptime"] = millis() / 1000;
     
