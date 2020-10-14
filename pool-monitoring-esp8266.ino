@@ -1,13 +1,9 @@
+#include "consts.h"
 #include "app.h"
 #include "config.h"
 #include "utils.h"
 #include "webserver.h"
 
-
-#ifndef STASSID
-#define STASSID "freebox"
-#define STAPSK  "220519972201200017022004AA"
-#endif
 
 //#include <GDBStub.h>
 #include <TZ.h>
