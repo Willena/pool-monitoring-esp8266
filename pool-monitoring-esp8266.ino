@@ -104,6 +104,7 @@ void wifi_connect(){
   // start network
   WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
+  WiFi.hostname("PoolManager");
   WiFi.begin(STASSID, STAPSK); 
   
   while (WiFi.status() != WL_CONNECTED) {
