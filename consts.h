@@ -1,5 +1,5 @@
 
 #ifndef STASSID
-#define STASSID "ssid"
-#define STAPSK  "Key"
+#define STASSID "freebox"
+#define STAPSK  "220519972201200017022004AA"
 #endif

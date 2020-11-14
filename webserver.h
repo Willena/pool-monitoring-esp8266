@@ -5,9 +5,6 @@
 #include <WiFiClient.h>
 #include <WiFiServer.h>
 #include <ESP8266WebServer.h>
-#include <WiFiClient.h>
-#include <WiFiServer.h>
-#include <ESP8266WebServer.h>
 #include <WiFiUdp.h>
 #include <flash_hal.h>
 #include <FS.h>
@@ -18,6 +15,7 @@
 #include "app.h"
 #include "mini_prom_client.h"
 #include "fileConstants.h"
+#include "EspSaveCrash.h"
 
 #define TEXT_PLAIN "text/plain"
 #define FS_INIT_ERROR "FS INIT ERROR"
@@ -27,8 +25,9 @@
 
 class Webserver : public ESP8266WebServer {
   public:
-    Webserver( App* app_ptr, int port = 80) : ESP8266WebServer(port) {
+    Webserver( App* app_ptr, int port = 80, SaveCrash* ch  ) : ESP8266WebServer(port) {
       this->app = app_ptr;
+      this->crashHandler = ch;
       //this->getServer().setServerKeyAndCert_P(rsakey, sizeof(rsakey), x509, sizeof(x509));
       fsOK = LittleFS.begin();
       Serial.println(fsOK ? F("Filesystem initialized.") : F("Filesystem init failed!"));
@@ -58,6 +57,8 @@ class Webserver : public ESP8266WebServer {
       on("/api/reboot", HTTP_POST, std::bind(&Webserver::handleAPIPostReboot, this));
       on("/api/help", HTTP_GET, std::bind(&Webserver::handleAPIGetHelp, this));
 
+      on("/api/crash", HTTP_GET, std::bind(&Webserver::handleAPIGetCrash, this)); //Get crash report
+      on("/api/crash", HTTP_DELETE, std::bind(&Webserver::handleAPIPutCrash, this)); // Clear crash report
 
 
       // on("/api/config/",
@@ -76,6 +77,7 @@ class Webserver : public ESP8266WebServer {
     bool fsOK = false;
     App * app;
     String _updaterError;
+    EspSaveCrash * crashHandler;
 
 
     void _setUpdaterError()
@@ -623,6 +625,17 @@ class Webserver : public ESP8266WebServer {
         
         ESP.restart();
       }
+  }
+
+  void handleAPIGetCrash(){
+    char crashbuf[2048];
+    this->crashHandler->crashToBuffer(crashbuf);
+    replyOKWithMsg(String(crashbuf));
+  }
+
+  void handleAPIPutCrash(){
+    this->crashHandler->clear();
+    replyOK();
   }
 
   void handleAPIGetStatus(){

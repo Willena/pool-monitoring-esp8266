@@ -3,7 +3,7 @@
 #include "config.h"
 #include "utils.h"
 #include "webserver.h"
-
+#include "EspSaveCrash.h"
 
 //#include <GDBStub.h>
 #include <TZ.h>
@@ -29,6 +29,8 @@ static bool isTimeSet = false;
 static bool hasOTAStarted = false;
 Webserver *httpServer;
 App *app;
+EspSaveCrash crashHandler(0, 3072);
+
 DynamicJsonDocument config(3072); //3k bytes for the JsonDocument
 
 #define PTM(w) \
@@ -191,7 +193,7 @@ void setup() {
   
   //Init temperature 
   app = new App();
-  httpServer = new Webserver(app, 80);
+  httpServer = new Webserver(app, 80, &crashHandler);
   httpServer->begin();
   
 }
