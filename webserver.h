@@ -1,3 +1,4 @@
+
 #ifndef WEBSERVER_H
 #define WEBSERVER_H
 
@@ -15,7 +16,7 @@
 #include "app.h"
 #include "mini_prom_client.h"
 #include "fileConstants.h"
-#include "EspSaveCrash.h"
+#include <EspSaveCrash.h>
 
 #define TEXT_PLAIN "text/plain"
 #define FS_INIT_ERROR "FS INIT ERROR"
@@ -25,7 +26,7 @@
 
 class Webserver : public ESP8266WebServer {
   public:
-    Webserver( App* app_ptr, int port = 80, SaveCrash* ch  ) : ESP8266WebServer(port) {
+    Webserver( App* app_ptr, EspSaveCrash* ch, int port = 80) : ESP8266WebServer(port) {
       this->app = app_ptr;
       this->crashHandler = ch;
       //this->getServer().setServerKeyAndCert_P(rsakey, sizeof(rsakey), x509, sizeof(x509));
@@ -500,7 +501,7 @@ class Webserver : public ESP8266WebServer {
 
       MiniPromClient client;
 
-      client.put("pool_temperature", "unit=\"C\"", String(this->app->getStatus()->currentTemp));
+      client.put("pool_temperature", "unit=\"C\"", String(this->app->getStatus()->rtlTemp));
       client.put("pool_pump_status", String(this->app->getStatus()->isPumpActivated?1:0));
       client.put("pool_is_manual", String(this->app->getStatus()->isManual?1:0));
       client.put("pool_ph_level", String(this->app->getStatus()->pHLevel));

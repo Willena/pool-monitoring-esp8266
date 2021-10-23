@@ -1,4 +1,3 @@
-
 #ifndef TIMETABLE_MGT
 #define TIMETABLE_MGT
 
@@ -13,7 +12,7 @@
 #include <time.h>   
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <PoolReader.h>
+#include <PoolReaderClient.h>
 
 
 typedef struct {
@@ -57,7 +56,7 @@ class App{
     private:
         OneWire *oneWire;
         DallasTemperature *sensors;
-        PoolReader *poolReader;
+        PoolReaderClient *poolReader;
         State state;
         Timer *pumpUpdateTimer;
         FixedTimeTimer *timeTableUpdate;
@@ -207,7 +206,7 @@ class App{
             this->sensors = new DallasTemperature(oneWire);
             this->sensors->begin();
 
-            this->poolReader = new PoolReader(oneWire);
+            this->poolReader = new PoolReaderClient(oneWire);
             // Applying calibration from config to the PoolReader client
             this->readCalibrationData(root);
             
