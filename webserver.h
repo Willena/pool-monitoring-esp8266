@@ -511,6 +511,8 @@ class Webserver : public ESP8266WebServer {
       client.put("pool_manual_remaining_time", String(this->app->getRemainingManualTime()));
       client.put("pool_ambiant_temperature", String(this->app->getStatus()->ambiantTemp));
       client.put("pool_water_level", String(this->app->getStatus()->waterLevel));
+      client.put("pool_filter_pressure", String(this->app->getStatus()->filterPressure));
+      client.put("pool_filter_pressure_vlt", String(this->app->getStatus()->filterPressureVlt));
 
       //Add more metrics in the future
 
@@ -660,6 +662,8 @@ class Webserver : public ESP8266WebServer {
     jsonbuffer["ambiantTemperature"] = state->ambiantTemp;
     jsonbuffer["waterLevel"] = state->waterLevel;
     jsonbuffer["version"] = POOL_FW_VERSION;
+    jsonbuffer["filterPressure"] = state->filterPressure;
+    jsonbuffer["filterPressureVlt"] = state->filterPressureVlt;
     jsonbuffer["uptime"] = millis() / 1000;
     
     JsonArray timetableArray = jsonbuffer.createNestedArray("currentTimetable");

@@ -14,6 +14,10 @@
 #include <DallasTemperature.h>
 #include <PoolReaderClient.h>
 
+typedef struct {
+  float vltStart;
+  float vltStop;
+} FilterPressureCal;
 
 typedef struct {
   char on[6]; // 00:00 => 6char 
@@ -37,6 +41,8 @@ typedef struct {
 typedef struct {
   float currentTemp;
   float rtlTemp;
+  float filterPressure;
+  float filterPressureVlt;
   float pHLevel;
   uint16_t pHRaw;
   float ORP_CL_BR;
@@ -65,6 +71,7 @@ class App{
         SeasonObject currentSeasonSlot;
         std::vector<TemperatureObject> temperatureTable;
         std::vector<SeasonObject> seasonTable;
+        FilterPressureCal filterSensorCal;
         bool initialized = false;
         Timer *watchDogTimer;
         Timer *manualActivationTimer;
@@ -86,6 +93,17 @@ class App{
           Serial.println(" - ADC value: "+ String(adcValue));
           
           poolReader->setCalibrationValue(temp, bufferValue, adcValue);
+
+          Serial.println("Reading pressure sensor data...");
+          float filterVltStart = calData["filterVltStart"];
+          float filterVltStop = calData["filterVltStop"];
+
+          this->filterSensorCal.vltStart = filterVltStart;
+          this->filterSensorCal.vltStop = filterVltStop;
+
+          Serial.println("Setting Filter pressure calibration data: ");
+          Serial.println(" - Start voltage: " + String(this->filterSensorCal.vltStart) );
+          Serial.println(" - End voltage: " + String(this->filterSensorCal.vltStop));        
            
         }
 
@@ -201,6 +219,7 @@ class App{
             
             pinMode(GPIO_RELAY, OUTPUT);
             digitalWrite(GPIO_RELAY, LOW);
+            pinMode(GPIO_PRESSURE, INPUT);
 
             this->oneWire = new OneWire(GPIO_DS18B20);
             this->sensors = new DallasTemperature(oneWire);
@@ -406,6 +425,19 @@ class App{
             }
         };
 
+        void getFilterPressure(){
+            Serial.println("Reading pressure voltage...");
+            int raw = analogRead(GPIO_PRESSURE);
+
+            float rawVlt = mapfloat(raw, 0, ADC_MAX_STEPS, 0, PWR_VLT);
+            float psiReading = mapfloat(rawVlt-this->filterSensorCal.vltStart, 0, this->filterSensorCal.vltStop - this->filterSensorCal.vltStart, PRESSURE_MIN, PRESSURE_MAX); 
+            float asBar = PSI_BAR_UNIT * psiReading;
+
+            Serial.println("Pressure reading: " + String(rawVlt)  + "V <=> " + String(psiReading) + " PSI");
+            this->state.filterPressure = psiReading;
+            this->state.filterPressureVlt = rawVlt;
+        }
+
         void onTimeTableUpdateFired(){
             Serial.println("Updating timetable...");
             // Get temp from rtlTemp
@@ -571,8 +603,11 @@ class App{
                 onTimeTableUpdateFired();  
             }
 
-            if (this->temperatureTimer->update(time_sec))
+            if (this->temperatureTimer->update(time_sec)){
                 this->getTemp();
+                this->getFilterPressure();
+            }
+              
 
             if (this->waterMeasurmentTimer->update(time_sec))
                 this->getWaterMesurements();

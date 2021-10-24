@@ -11,6 +11,12 @@
 #define GPIO_RELAY 4 //D2
 #define GPIO_DS18B20 5 //D1
 #define PASSWORD_OTA "password"
+#define GPIO_PRESSURE A0
+#define ADC_MAX_STEPS 1023
+#define PWR_VLT 3.33
+#define PRESSURE_MIN 0
+#define PRESSURE_MAX 100
+#define PSI_BAR_UNIT 0.0689
 
 // uint8_t pin5[8] = {0x28, 0x2F, 0xD7, 0x79, 0xA2, 0x01, 0x03, 0x27}; Address of DS1820B
 
